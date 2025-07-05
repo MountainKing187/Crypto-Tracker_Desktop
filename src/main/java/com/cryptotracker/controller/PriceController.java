@@ -2,30 +2,31 @@ package com.cryptotracker.controller;
 
 import com.cryptotracker.model.CryptoPrice;
 import com.cryptotracker.view.MainFrame;
-
-import javax.swing.*;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public class PriceController {
     private final APIClient apiClient;
     private final MainFrame view;
-    private Timer timer;
+    private final List<String> trackedSymbols;
 
     public PriceController(MainFrame view) {
         this.view = view;
         this.apiClient = new APIClient();
+        this.trackedSymbols = new ArrayList<>(Arrays.asList(
+                "bitcoin", "ethereum", "dogecoin", "litecoin"
+        ));
     }
 
-    public void startPriceUpdates(int intervalSeconds) {
-        timer = new Timer(intervalSeconds * 1000, e -> {
-            try {
-                ArrayList<CryptoPrice> prices = apiClient.fetchPrices();
-                view.updatePrices(prices);
-            } catch (IOException ex) {
-                view.showError("Error fetching data: " + ex.getMessage());
-            }
-        });
-        timer.start();
+    // Método modificado para ser llamado por el timer
+    public void startPriceUpdates() {
+        try {
+            List<CryptoPrice> prices = apiClient.getLatestPrices(trackedSymbols);
+            view.updatePrices(prices);
+        } catch (IOException ex) {
+            view.showError("Error fetching data: " + ex.getMessage());
+        }
     }
 }
