@@ -67,32 +67,6 @@ public class APIClient {
         return prices;
     }
 
-    // Obtener bloques recientes
-    public List<Block> getRecentBlocks(int limit) throws IOException {
-        String endpoint = baseUrl + "/api/blocks/recent";
-        JSONArray response = fetchJsonArray(endpoint);
-        List<Block> blocks = new ArrayList<>();
-
-        for (int i = 0; i < Math.min(limit, response.length()); i++) {
-            blocks.add(parseBlock(response.getJSONObject(i)));
-        }
-
-        return blocks;
-    }
-
-    // Obtener transacciones de un bloque
-    public List<Transaction> getBlockTransactions(long blockNumber) throws IOException {
-        String endpoint = baseUrl + "/api/transactions/" + blockNumber;
-        JSONArray response = fetchJsonArray(endpoint);
-        List<Transaction> transactions = new ArrayList<>();
-
-        for (int i = 0; i < response.length(); i++) {
-            transactions.add(parseTransaction(response.getJSONObject(i)));
-        }
-
-        return transactions;
-    }
-
     private JSONArray fetchJsonArray(String endpoint) throws IOException {
         HttpURLConnection conn = createConnection(endpoint);
         return parseResponse(conn);
@@ -123,46 +97,42 @@ public class APIClient {
         }
     }
 
-    // Parsers para los diferentes modelos
+    // Metodo para obtener datos históricos
+    public List<CryptoPrice> getHistoricalPrices(String symbol, int hours) throws IOException {
+        String endpoint = baseUrl + "/api/price/" + symbol + "?hours=" + hours;
+        JSONArray response = fetchJsonArray(endpoint);
+        List<CryptoPrice> prices = new ArrayList<>();
+
+        for (int i = 0; i < response.length(); i++) {
+            JSONObject obj = response.getJSONObject(i);
+            prices.add(parseCryptoPrice(obj));
+        }
+
+        return prices;
+    }
+
+    // Metod mejorado para parsear precios (maneja diferentes formatos)
     private CryptoPrice parseCryptoPrice(JSONObject obj) {
         String symbol = obj.getString("symbol");
         double price = obj.getDouble("price");
+        long timestamp;
 
-        // Parsear fecha ISO 8601
-        String dateStr = obj.getJSONObject("timestamp")
-                .getString("$date");
-
-        Instant instant = Instant.from(DATE_FORMATTER.parse(dateStr));
-        long timestamp = instant.getEpochSecond();
-
-        return new CryptoPrice(symbol, price, timestamp);
-    }
-
-    private Block parseBlock(JSONObject obj) {
-        long blockNumber = obj.getLong("blockNumber");
-        String hash = obj.getString("hash");
-        String miner = obj.getString("miner");
-        long timestamp = obj.getLong("timestamp");
-
-        // Parsear transacciones
-        JSONArray txArray = obj.getJSONArray("transactions");
-        List<String> transactions = new ArrayList<>();
-        for (int i = 0; i < txArray.length(); i++) {
-            transactions.add(txArray.getString(i));
+        // Manejar diferentes formatos de timestamp
+        if (obj.has("timestamp")) {
+            if (obj.get("timestamp") instanceof JSONObject) {
+                // Formato con objeto anidado
+                JSONObject timestampObj = obj.getJSONObject("timestamp");
+                String dateStr = timestampObj.getString("$date");
+                Instant instant = Instant.from(DATE_FORMATTER.parse(dateStr));
+                timestamp = instant.getEpochSecond();
+            } else {
+                // Formato directo (long)
+                timestamp = obj.getLong("timestamp");
+            }
+        } else {
+            throw new IllegalArgumentException("Missing timestamp in price data");
         }
 
-        return new Block(blockNumber, hash, miner, timestamp, transactions);
-    }
-
-    private Transaction parseTransaction(JSONObject obj) {
-        String hash = obj.getString("hash");
-        String asset = obj.getString("asset");
-        long blockNumber = obj.getLong("blockNumber");
-        String from = obj.getString("from");
-        String to = obj.getString("to");
-        String value = obj.getString("value");
-        long timestamp = obj.getLong("timestamp");
-
-        return new Transaction(hash, asset, blockNumber, from, to, value, timestamp);
+        return new CryptoPrice(symbol, price, timestamp);
     }
 }

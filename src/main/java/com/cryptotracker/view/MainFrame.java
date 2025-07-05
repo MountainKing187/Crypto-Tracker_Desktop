@@ -17,6 +17,7 @@ public class MainFrame extends JFrame {
     private PriceController priceController;
     private Timer timer;
     private String selectedCrypto = "ethereum"; // Moneda por defecto
+    private JSpinner hoursSpinner;
 
     public MainFrame() {
         setTitle("Crypto Price Monitor");
@@ -48,6 +49,11 @@ public class MainFrame extends JFrame {
         JPanel controlPanel = createControlPanel();
         add(controlPanel, BorderLayout.SOUTH);
 
+        // Añadir selector de horas al panel de controles
+        controlPanel.add(new JLabel("Horas históricas:"));
+        hoursSpinner = new JSpinner(new SpinnerNumberModel(24, 1, 168, 1));
+        controlPanel.add(hoursSpinner);
+
         // Inicializar controlador
         priceController = new PriceController(this);
 
@@ -60,6 +66,19 @@ public class MainFrame extends JFrame {
         });
     }
 
+    private void loadHistoricalData() {
+        try {
+            int hours = (int) hoursSpinner.getValue();
+            List<CryptoPrice> historicalPrices = priceController.getHistoricalPrices(
+                    selectedCrypto, hours
+            );
+            cryptoChartPanel.loadHistoricalData(historicalPrices, selectedCrypto);
+            showStatus("Datos históricos cargados: " + selectedCrypto.toUpperCase());
+        } catch (Exception ex) {
+            showError("Error cargando datos históricos: " + ex.getMessage());
+        }
+    }
+
     private JPanel createSelectorPanel() {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
         panel.setBorder(BorderFactory.createTitledBorder("Selección de Moneda"));
@@ -68,10 +87,9 @@ public class MainFrame extends JFrame {
         String[] cryptos = {"bitcoin", "ethereum", "dogecoin"};
         for (String crypto : cryptos) {
             JButton btn = new JButton(crypto.toUpperCase());
-            btn.setPreferredSize(new Dimension(100, 30));
             btn.addActionListener(e -> {
                 selectedCrypto = crypto;
-                updateChartWithSelectedCrypto();
+                loadHistoricalData(); // Cargar datos históricos al cambiar moneda
                 cryptoChartPanel.setChartTitle("Precio de " + crypto.toUpperCase());
             });
             panel.add(btn);
@@ -102,14 +120,18 @@ public class MainFrame extends JFrame {
         JButton startButton = new JButton("Iniciar Monitoreo");
         JButton stopButton = new JButton("Detener Monitoreo");
         JButton refreshButton = new JButton("Actualizar Ahora");
+        JButton historyButton = new JButton("Cargar Históricos");
 
         startButton.addActionListener(e -> startMonitoring());
         stopButton.addActionListener(e -> stopMonitoring());
         refreshButton.addActionListener(e -> refreshData());
+        historyButton.addActionListener(e -> loadHistoricalData());
 
         panel.add(startButton);
         panel.add(stopButton);
         panel.add(refreshButton);
+        panel.add(historyButton);
+
 
         return panel;
     }
@@ -139,8 +161,17 @@ public class MainFrame extends JFrame {
 
     public void refreshData() {
         try {
-            List<CryptoPrice> prices = priceController.getLatestPrices();
-            updatePrices(prices);
+            // Obtener solo los últimos precios
+            List<CryptoPrice> latestPrices = priceController.getLatestPrices();
+            updatePrices(latestPrices);
+
+            // Añadir el último precio al gráfico existente
+            for (CryptoPrice price : latestPrices) {
+                if (price.getSymbol().equals(selectedCrypto)) {
+                    cryptoChartPanel.addPricePoint(price);
+                }
+            }
+
             showStatus("Datos actualizados: " + new java.util.Date());
         } catch (Exception ex) {
             showError("Error en actualización: " + ex.getMessage());
