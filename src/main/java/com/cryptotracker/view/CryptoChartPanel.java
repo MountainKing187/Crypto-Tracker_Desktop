@@ -10,9 +10,18 @@ import org.jfree.data.time.Minute;
 import org.jfree.data.time.TimeSeries;
 import org.jfree.data.time.TimeSeriesCollection;
 import org.jfree.data.xy.XYDataset;
+import org.jfree.chart.axis.NumberAxis;
+import org.jfree.chart.labels.StandardXYToolTipGenerator;
+import org.jfree.chart.renderer.xy.XYItemRenderer;
+import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 
 import javax.swing.*;
 import java.awt.*;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.text.FieldPosition;
+import java.text.NumberFormat;
+import java.text.ParsePosition;
 import java.text.SimpleDateFormat;
 import java.util.HashMap;
 import java.util.List;
@@ -133,6 +142,47 @@ public class CryptoChartPanel extends JPanel {
         // Formato para eje de tiempo
         DateAxis axis = (DateAxis) plot.getDomainAxis();
         axis.setDateFormatOverride(new SimpleDateFormat("HH:mm"));
+// Personalizar eje Y para precios pequeños
+        NumberAxis rangeAxis = (NumberAxis) plot.getRangeAxis();
+        rangeAxis.setNumberFormatOverride(new SmallValueFormat());
+
+        // Personalizar tooltips
+        XYItemRenderer renderer = plot.getRenderer();
+        if (renderer instanceof XYLineAndShapeRenderer) {
+            ((XYLineAndShapeRenderer) renderer).setDefaultToolTipGenerator(
+                    new StandardXYToolTipGenerator(
+                            StandardXYToolTipGenerator.DEFAULT_TOOL_TIP_FORMAT,
+                            new SmallValueFormat(),
+                            new SmallValueFormat()
+                    )
+            );
+        }
+    }
+
+    // Formateador personalizado para valores pequeños
+    private static class SmallValueFormat extends NumberFormat {
+        @Override
+        public StringBuffer format(double number, StringBuffer toAppendTo, FieldPosition pos) {
+            if (Math.abs(number) < 0.0001) {
+                BigDecimal bd = BigDecimal.valueOf(number);
+                bd = bd.setScale(10, RoundingMode.HALF_UP);
+                toAppendTo.append(bd.stripTrailingZeros().toPlainString());
+            } else {
+                toAppendTo.append(NumberFormat.getNumberInstance().format(number));
+            }
+            return toAppendTo;
+        }
+
+        @Override
+        public StringBuffer format(long number, StringBuffer toAppendTo, FieldPosition pos) {
+            return format((double) number, toAppendTo, pos);
+        }
+
+        @Override
+        public Number parse(String source, ParsePosition parsePosition) {
+            // No necesario para visualización
+            return null;
+        }
     }
 
     public void setChartTitle(String title) {
