@@ -18,6 +18,10 @@ public class CryptoPrice {
         return new Date(timestamp * 1000);
     }
 
+    public long getMinuteTimestamp() {
+        return timestamp - (timestamp % 60);
+    }
+
     // Getters
     public String getSymbol() { return symbol; }
     public double getPrice() { return price; }

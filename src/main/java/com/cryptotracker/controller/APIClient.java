@@ -111,7 +111,7 @@ public class APIClient {
         return prices;
     }
 
-    // Metod mejorado para parsear precios (maneja diferentes formatos)
+    // Metodo mejorado para parsear precios (maneja diferentes formatos)
     private CryptoPrice parseCryptoPrice(JSONObject obj) {
         String symbol = obj.getString("symbol");
         double price = obj.getDouble("price");
@@ -120,14 +120,17 @@ public class APIClient {
         // Manejar diferentes formatos de timestamp
         if (obj.has("timestamp")) {
             if (obj.get("timestamp") instanceof JSONObject) {
-                // Formato con objeto anidado
                 JSONObject timestampObj = obj.getJSONObject("timestamp");
                 String dateStr = timestampObj.getString("$date");
+
+                // Parsear fecha y redondear a minutos
                 Instant instant = Instant.from(DATE_FORMATTER.parse(dateStr));
                 timestamp = instant.getEpochSecond();
+                timestamp = timestamp - (timestamp % 60); // Redondear al minuto completo
             } else {
-                // Formato directo (long)
+                // Formato directo (long) - redondear a minutos
                 timestamp = obj.getLong("timestamp");
+                timestamp = timestamp - (timestamp % 60);
             }
         } else {
             throw new IllegalArgumentException("Missing timestamp in price data");

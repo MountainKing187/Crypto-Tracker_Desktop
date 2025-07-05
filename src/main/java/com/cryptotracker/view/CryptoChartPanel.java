@@ -14,7 +14,9 @@ import org.jfree.data.xy.XYDataset;
 import javax.swing.*;
 import java.awt.*;
 import java.text.SimpleDateFormat;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class CryptoChartPanel extends JPanel {
     private final TimeSeriesCollection dataset;
@@ -60,12 +62,22 @@ public class CryptoChartPanel extends JPanel {
             priceSeries.clear();
             currentCrypto = crypto;
 
+            // Usar un mapa para detectar y manejar duplicados
+            Map<Minute, Double> minutePrices = new HashMap<>();
+
             for (CryptoPrice price : historicalPrices) {
                 if (price.getSymbol().equals(crypto)) {
                     Minute minute = new Minute(price.getTimestampAsDate());
-                    priceSeries.add(minute, price.getPrice());
+
+                    // Solo mantener el último precio por minuto
+                    minutePrices.put(minute, price.getPrice());
                 }
             }
+
+            // Añadir puntos únicos al gráfico
+            minutePrices.forEach((minute, price) ->
+                    priceSeries.addOrUpdate(minute, price)
+            );
 
             // Actualizar título
             chart.setTitle("Precio histórico de " + crypto.toUpperCase());
@@ -85,14 +97,30 @@ public class CryptoChartPanel extends JPanel {
         SwingUtilities.invokeLater(() -> {
             if (price.getSymbol().equals(currentCrypto)) {
                 Minute minute = new Minute(price.getTimestampAsDate());
+
+                // Usar siempre addOrUpdate para evitar duplicados
                 priceSeries.addOrUpdate(minute, price.getPrice());
 
                 // Mantener un máximo de 200 puntos
                 if (priceSeries.getItemCount() > 200) {
                     priceSeries.delete(0, 0);
                 }
+
+                // Actualizar el eje de tiempo
+                updateTimeAxis();
             }
         });
+    }
+
+    private void updateTimeAxis() {
+        XYPlot plot = chart.getXYPlot();
+        DateAxis axis = (DateAxis) plot.getDomainAxis();
+
+        if (priceSeries.getItemCount() > 24) {
+            axis.setDateFormatOverride(new SimpleDateFormat("dd/MM HH:mm"));
+        } else {
+            axis.setDateFormatOverride(new SimpleDateFormat("HH:mm"));
+        }
     }
 
     private void customizeChart() {

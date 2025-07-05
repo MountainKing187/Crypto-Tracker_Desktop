@@ -72,7 +72,18 @@ public class MainFrame extends JFrame {
             List<CryptoPrice> historicalPrices = priceController.getHistoricalPrices(
                     selectedCrypto, hours
             );
+
+            // Cargar datos históricos
             cryptoChartPanel.loadHistoricalData(historicalPrices, selectedCrypto);
+
+            // Cargar último punto actual para iniciar serie
+            List<CryptoPrice> latestPrices = priceController.getLatestPrices();
+            for (CryptoPrice price : latestPrices) {
+                if (price.getSymbol().equals(selectedCrypto)) {
+                    cryptoChartPanel.addPricePoint(price);
+                }
+            }
+
             showStatus("Datos históricos cargados: " + selectedCrypto.toUpperCase());
         } catch (Exception ex) {
             showError("Error cargando datos históricos: " + ex.getMessage());
