@@ -1,5 +1,7 @@
 package com.cryptotracker.model;
 
+import java.util.Date;
+
 public class CryptoPrice {
     private String symbol;
     private double price;
@@ -11,13 +13,13 @@ public class CryptoPrice {
         this.timestamp = timestamp;
     }
 
+    // Nuevo metodo para convertir timestamp a Date
+    public Date getTimestampAsDate() {
+        return new Date(timestamp * 1000);
+    }
+
     // Getters
     public String getSymbol() { return symbol; }
     public double getPrice() { return price; }
     public long getTimestamp() { return timestamp; }
-
-    // Formateador para la UI
-    public String getFormattedPrice() {
-        return String.format("$%.4f", price);
-    }
 }

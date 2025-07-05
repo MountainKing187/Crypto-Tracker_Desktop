@@ -16,11 +16,11 @@ public class PriceController {
         this.view = view;
         this.apiClient = new APIClient();
         this.trackedSymbols = new ArrayList<>(Arrays.asList(
-                "bitcoin", "ethereum", "dogecoin", "litecoin"
+                "bitcoin", "ethereum", "dogecoin"
         ));
     }
 
-    // Método modificado para ser llamado por el timer
+    // Metodo modificado para ser llamado por el timer
     public void startPriceUpdates() {
         try {
             List<CryptoPrice> prices = apiClient.getLatestPrices(trackedSymbols);
@@ -28,5 +28,9 @@ public class PriceController {
         } catch (IOException ex) {
             view.showError("Error fetching data: " + ex.getMessage());
         }
+    }
+
+    public List<CryptoPrice> getLatestPrices() throws IOException {
+        return apiClient.getLatestPrices(trackedSymbols);
     }
 }

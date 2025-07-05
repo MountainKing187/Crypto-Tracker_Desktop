@@ -5,6 +5,8 @@ import com.cryptotracker.model.CryptoPrice;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.List;
@@ -14,45 +16,40 @@ public class MainFrame extends JFrame {
     private final CryptoChartPanel cryptoChartPanel;
     private PriceController priceController;
     private Timer timer;
+    private String selectedCrypto = "ethereum"; // Moneda por defecto
 
     public MainFrame() {
         setTitle("Crypto Price Monitor");
-        setSize(1000, 600);
+        setSize(1200, 700);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         // Crear componentes principales
         pricePanel = new PricePanel();
         cryptoChartPanel = new CryptoChartPanel();
 
-        // Configurar layout
-        setLayout(new BorderLayout());
+        // Configurar layout principal
+        setLayout(new BorderLayout(10, 10));
 
-        // Panel dividido para tabla y gráfico
-        JSplitPane splitPane = new JSplitPane(
+        // Panel de selección de moneda
+        JPanel selectorPanel = createSelectorPanel();
+        add(selectorPanel, BorderLayout.NORTH);
+
+        // Panel de contenido dividido
+        JSplitPane contentPane = new JSplitPane(
                 JSplitPane.HORIZONTAL_SPLIT,
                 new JScrollPane(pricePanel),
                 new JScrollPane(cryptoChartPanel)
         );
-        splitPane.setResizeWeight(0.5);
-        splitPane.setDividerLocation(0.5);
+        contentPane.setResizeWeight(0.4);
+        contentPane.setDividerLocation(0.4);
+        add(contentPane, BorderLayout.CENTER);
 
-        add(splitPane, BorderLayout.CENTER);
-
-        // Panel inferior para controles
-        JPanel controlPanel = new JPanel();
-        JButton startButton = new JButton("Iniciar Monitoreo");
-        JButton stopButton = new JButton("Detener Monitoreo");
-
-        startButton.addActionListener(e -> startMonitoring());
-        stopButton.addActionListener(e -> stopMonitoring());
-
-        controlPanel.add(startButton);
-        controlPanel.add(stopButton);
+        // Panel de control
+        JPanel controlPanel = createControlPanel();
         add(controlPanel, BorderLayout.SOUTH);
 
-        // Barra de estado
-        JLabel statusBar = new JLabel("Estado: Inactivo");
-        add(statusBar, BorderLayout.NORTH);
+        // Inicializar controlador
+        priceController = new PriceController(this);
 
         // Manejar cierre de ventana
         addWindowListener(new WindowAdapter() {
@@ -61,9 +58,60 @@ public class MainFrame extends JFrame {
                 stopMonitoring();
             }
         });
+    }
 
-        // Inicializar controlador
-        priceController = new PriceController(this);
+    private JPanel createSelectorPanel() {
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
+        panel.setBorder(BorderFactory.createTitledBorder("Selección de Moneda"));
+
+        // Botones para las principales criptomonedas
+        String[] cryptos = {"bitcoin", "ethereum", "dogecoin"};
+        for (String crypto : cryptos) {
+            JButton btn = new JButton(crypto.toUpperCase());
+            btn.setPreferredSize(new Dimension(100, 30));
+            btn.addActionListener(e -> {
+                selectedCrypto = crypto;
+                updateChartWithSelectedCrypto();
+                cryptoChartPanel.setChartTitle("Precio de " + crypto.toUpperCase());
+            });
+            panel.add(btn);
+        }
+
+        // Selector desplegable para más monedas
+        JComboBox<String> cryptoCombo = new JComboBox<>(new String[]{
+                "litecoin", "ripple","bitcoin-cash", "cardano", "polkadot", "solana", "tether"
+        });
+        cryptoCombo.setEditable(false);
+        cryptoCombo.addActionListener(e -> {
+            selectedCrypto = (String) cryptoCombo.getSelectedItem();
+            updateChartWithSelectedCrypto();
+            cryptoChartPanel.setChartTitle("Precio de " + selectedCrypto.toUpperCase());
+        });
+
+        panel.add(new JLabel("Otras monedas:"));
+        panel.add(cryptoCombo);
+
+        return panel;
+    }
+
+    private JPanel createControlPanel() {
+        JPanel panel = new JPanel(new GridLayout(1, 3, 10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(5, 10, 10, 10));
+
+        // Botones de control
+        JButton startButton = new JButton("Iniciar Monitoreo");
+        JButton stopButton = new JButton("Detener Monitoreo");
+        JButton refreshButton = new JButton("Actualizar Ahora");
+
+        startButton.addActionListener(e -> startMonitoring());
+        stopButton.addActionListener(e -> stopMonitoring());
+        refreshButton.addActionListener(e -> refreshData());
+
+        panel.add(startButton);
+        panel.add(stopButton);
+        panel.add(refreshButton);
+
+        return panel;
     }
 
     public void startMonitoring() {
@@ -72,30 +120,46 @@ public class MainFrame extends JFrame {
         }
 
         // Iniciar actualizaciones cada 30 segundos
-        timer = new Timer(30000, e -> {
-            try {
-                priceController.startPriceUpdates();
-            } catch (Exception ex) {
-                showError("Error en actualización: " + ex.getMessage());
-            }
-        });
+        timer = new Timer(30000, e -> refreshData());
         timer.setInitialDelay(0);
         timer.start();
 
-        updateStatus("Monitoreo activo - Actualizando datos...");
+        // Primera actualización inmediata
+        refreshData();
+
+        showStatus("Monitoreo activo - Actualizando datos...");
     }
 
     public void stopMonitoring() {
         if (timer != null) {
             timer.stop();
         }
-        updateStatus("Monitoreo detenido");
+        showStatus("Monitoreo detenido");
+    }
+
+    public void refreshData() {
+        try {
+            List<CryptoPrice> prices = priceController.getLatestPrices();
+            updatePrices(prices);
+            showStatus("Datos actualizados: " + new java.util.Date());
+        } catch (Exception ex) {
+            showError("Error en actualización: " + ex.getMessage());
+        }
+    }
+
+    private void updateChartWithSelectedCrypto() {
+        if (pricePanel.getLastPrices() != null) {
+            cryptoChartPanel.updateChartForCrypto(
+                    pricePanel.getLastPrices(),
+                    selectedCrypto
+            );
+        }
     }
 
     public void updatePrices(List<CryptoPrice> prices) {
         SwingUtilities.invokeLater(() -> {
             pricePanel.updateTable(prices);
-            cryptoChartPanel.updateChart(prices);
+            cryptoChartPanel.updateChartForCrypto(prices, selectedCrypto);
         });
     }
 
@@ -110,12 +174,9 @@ public class MainFrame extends JFrame {
         });
     }
 
-    private void updateStatus(String message) {
+    public void showStatus(String message) {
         SwingUtilities.invokeLater(() -> {
-            JLabel statusBar = (JLabel) ((BorderLayout) getLayout()).getLayoutComponent(BorderLayout.NORTH);
-            if (statusBar != null) {
-                statusBar.setText("Estado: " + message);
-            }
+            setTitle("Crypto Price Monitor - " + message);
         });
     }
 

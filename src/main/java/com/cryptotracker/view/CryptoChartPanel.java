@@ -14,22 +14,22 @@ import org.jfree.data.xy.XYDataset;
 import javax.swing.*;
 import java.awt.*;
 import java.text.SimpleDateFormat;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class CryptoChartPanel extends JPanel {
     private final TimeSeriesCollection dataset;
-    private final Map<String, TimeSeries> cryptoSeries;
     private final JFreeChart chart;
+    private TimeSeries currentSeries;
+    private String currentCrypto = "";
 
     public CryptoChartPanel() {
         setLayout(new BorderLayout());
         setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        // Crear dataset y series temporales
+        // Crear dataset y serie temporal
         dataset = new TimeSeriesCollection();
-        cryptoSeries = new HashMap<>();
+        currentSeries = new TimeSeries("");
+        dataset.addSeries(currentSeries);
 
         // Crear gráfico
         chart = ChartFactory.createTimeSeriesChart(
@@ -43,42 +43,51 @@ public class CryptoChartPanel extends JPanel {
         );
 
         // Personalizar gráfico
-        XYPlot plot = chart.getXYPlot();
-        plot.setBackgroundPaint(Color.WHITE);
-        plot.setDomainGridlinePaint(Color.LIGHT_GRAY);
-        plot.setRangeGridlinePaint(Color.LIGHT_GRAY);
-
-        // Formato para eje de tiempo
-        DateAxis axis = (DateAxis) plot.getDomainAxis();
-        axis.setDateFormatOverride(new SimpleDateFormat("HH:mm"));
+        customizeChart();
 
         // Crear panel de gráfico
         ChartPanel chartPanel = new ChartPanel(chart);
-        chartPanel.setPreferredSize(new Dimension(500, 300));
+        chartPanel.setPreferredSize(new Dimension(600, 400));
         chartPanel.setMouseZoomable(true);
 
         add(chartPanel, BorderLayout.CENTER);
     }
 
-    public void updateChart(List<CryptoPrice> prices) {
+    private void customizeChart() {
+        XYPlot plot = chart.getXYPlot();
+        plot.setBackgroundPaint(Color.WHITE);
+        plot.setDomainGridlinePaint(Color.LIGHT_GRAY);
+        plot.setRangeGridlinePaint(Color.LIGHT_GRAY);
+        plot.getRenderer().setSeriesPaint(0, new Color(30, 144, 255)); // Azul
+
+        // Formato para eje de tiempo
+        DateAxis axis = (DateAxis) plot.getDomainAxis();
+        axis.setDateFormatOverride(new SimpleDateFormat("HH:mm"));
+    }
+
+    public void setChartTitle(String title) {
+        chart.setTitle(title);
+    }
+
+    public void updateChartForCrypto(List<CryptoPrice> prices, String crypto) {
         SwingUtilities.invokeLater(() -> {
+            // Limpiar serie si cambió la criptomoneda
+            if (!crypto.equals(currentCrypto)) {
+                currentSeries.clear();
+                currentCrypto = crypto;
+                chart.setTitle("Precio de " + crypto.toUpperCase());
+            }
+
+            // Añadir nuevos puntos para la criptomoneda seleccionada
             for (CryptoPrice price : prices) {
-                String symbol = price.getSymbol();
-                TimeSeries series = cryptoSeries.get(symbol);
+                if (price.getSymbol().equals(crypto)) {
+                    Minute minute = new Minute(price.getTimestampAsDate());
+                    currentSeries.addOrUpdate(minute, price.getPrice());
 
-                if (series == null) {
-                    // Crear nueva serie para esta criptomoneda
-                    series = new TimeSeries(symbol);
-                    cryptoSeries.put(symbol, series);
-                    dataset.addSeries(series);
-                }
-
-                // Añadir punto de datos (usando timestamp actual)
-                series.addOrUpdate(new Minute(), price.getPrice());
-
-                // Limitar a 30 puntos por serie
-                if (series.getItemCount() > 30) {
-                    series.delete(0, 0);
+                    // Limitar a 60 puntos
+                    if (currentSeries.getItemCount() > 60) {
+                        currentSeries.delete(0, 0);
+                    }
                 }
             }
         });

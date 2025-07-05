@@ -11,6 +11,7 @@ public class PricePanel extends JPanel {
     private final JTable table;
     private final DefaultTableModel tableModel;
     private final JLabel lastUpdateLabel;
+    private List<CryptoPrice> lastPrices;
 
     public PricePanel() {
         setLayout(new BorderLayout());
@@ -47,6 +48,7 @@ public class PricePanel extends JPanel {
 
     public void updateTable(List<CryptoPrice> prices) {
         SwingUtilities.invokeLater(() -> {
+            this.lastPrices = prices; // Guardar última lista
             tableModel.setRowCount(0); // Limpiar tabla
 
             for (CryptoPrice price : prices) {
@@ -90,5 +92,9 @@ public class PricePanel extends JPanel {
             }
             return c;
         }
+    }
+
+    public List<CryptoPrice> getLastPrices() {
+        return lastPrices;
     }
 }
