@@ -9,7 +9,7 @@ import java.util.ArrayList;
 
 public class MainFrame extends JFrame {
     private PricePanel pricePanel;
-    private ChartPanel chartPanel;
+    private CryptoChartPanel chartPanel;
 
     public MainFrame() {
         setTitle("Crypto Price Monitor");
@@ -17,7 +17,7 @@ public class MainFrame extends JFrame {
         setLayout(new BorderLayout());
 
         pricePanel = new PricePanel();
-        chartPanel = new ChartPanel();
+        chartPanel = new CryptoChartPanel();
 
         JSplitPane splitPane = new JSplitPane(
                 JSplitPane.HORIZONTAL_SPLIT,

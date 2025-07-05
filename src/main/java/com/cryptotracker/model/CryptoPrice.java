@@ -17,4 +17,8 @@ public class CryptoPrice {
     public String getFormattedPrice() {
         return String.format("$%.2f", price);
     }
+
+    public String getSymbol() { return this.symbol; }
+    public double getPrice() { return this.price; }
+    public long getTimestamp() { return this.timestamp; }
 }
